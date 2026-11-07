@@ -222,6 +222,46 @@ public interface FindRunnersConfig extends Config
 		return 10;
 	}
 
+	String INSURANCE_KEY = "insurance";
+	String AFK_PRICE_KEY = "afkPrice";
+	String TICK_PRICE_KEY = "tickPrice";
+
+	@ConfigItem(
+		position = 307,
+		keyName = INSURANCE_KEY,
+		name = "Insurance",
+		description = "Insurance amount used by the bone calculator. Example: 20m",
+		section = runnerSection
+	)
+	default String insurance()
+	{
+		return "";
+	}
+
+	@ConfigItem(
+		position = 308,
+		keyName = AFK_PRICE_KEY,
+		name = "AFK price per inv",
+		description = "What you charge per inventory for an AFK run. Used by !bones afk and the bone calculator.",
+		section = runnerSection
+	)
+	default String afkPrice()
+	{
+		return "25k";
+	}
+
+	@ConfigItem(
+		position = 309,
+		keyName = TICK_PRICE_KEY,
+		name = "Tick price per inv",
+		description = "What you charge per inventory for a tick run. Used by !bones tick and the bone calculator.",
+		section = runnerSection
+	)
+	default String tickPrice()
+	{
+		return "15k";
+	}
+
 	@ConfigSection(
 		name = "Connection",
 		description = "Optional remote logo",

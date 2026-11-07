@@ -7,6 +7,7 @@ import net.runelite.client.ui.PluginPanel;
 
 public class FindRunnersPanel extends PluginPanel
 {
+	public final BoneCalcPanel calculator;
 	public final RunManagerPanel runManager;
 	public final RunnerStatPanel statPanel;
 
@@ -20,7 +21,7 @@ public class FindRunnersPanel extends PluginPanel
 		column.setLayout(new javax.swing.BoxLayout(column, javax.swing.BoxLayout.Y_AXIS));
 		column.setOpaque(false);
 
-		BoneCalcPanel calculator = new BoneCalcPanel(plugin.getItemManager(), plugin.getClientThread());
+		calculator = new BoneCalcPanel(plugin);
 		runManager = new RunManagerPanel(plugin);
 		statPanel = new RunnerStatPanel(plugin);
 		calculator.setBorder(new EmptyBorder(8, 8, 8, 8));
@@ -37,5 +38,10 @@ public class FindRunnersPanel extends PluginPanel
 	{
 		runManager.refreshButton();
 		statPanel.refresh();
+	}
+
+	public void reloadRates()
+	{
+		calculator.reloadRates();
 	}
 }

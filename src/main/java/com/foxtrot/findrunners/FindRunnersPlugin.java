@@ -69,8 +69,6 @@ public class FindRunnersPlugin extends Plugin
 	static final String SET_CLIENT = "Set as Client";
 	static final String REMOVE_CLIENT = "Remove as Client";
 	private static final String TRADING_WITH = "Trading with: ";
-	private static final int AFK_RATE = 25_000;
-	private static final int TICK_RATE = 15_000;
 
 	@Inject
 	private Client client;
@@ -218,6 +216,32 @@ public class FindRunnersPlugin extends Plugin
 		return clientThread;
 	}
 
+	public String priceText(RunType type)
+	{
+		String value = type == RunType.tick ? config.tickPrice() : config.afkPrice();
+		if (value == null || value.trim().isEmpty())
+		{
+			return type == RunType.tick ? "15k" : "25k";
+		}
+		return value.trim();
+	}
+
+	public int pricePerInventory(RunType type)
+	{
+		return parseAmount(priceText(type));
+	}
+
+	public String insuranceText()
+	{
+		String value = config.insurance();
+		return value == null ? "" : value.trim();
+	}
+
+	public void saveRunPrice(String key, String value)
+	{
+		configManager.setConfiguration("findrunners", key, value);
+	}
+
 	public RunnerStats getStats()
 	{
 		return stats;
@@ -251,6 +275,18 @@ public class FindRunnersPlugin extends Plugin
 			return;
 		}
 		refreshLogo();
+		if (FindRunnersConfig.INSURANCE_KEY.equals(event.getKey())
+			|| FindRunnersConfig.AFK_PRICE_KEY.equals(event.getKey())
+			|| FindRunnersConfig.TICK_PRICE_KEY.equals(event.getKey()))
+		{
+			SwingUtilities.invokeLater(() ->
+			{
+				if (panel != null)
+				{
+					panel.reloadRates();
+				}
+			});
+		}
 		Widget chat = client.getWidget(InterfaceID.Chatbox.CHATDISPLAY);
 		if (chat != null)
 		{
@@ -392,18 +428,33 @@ public class FindRunnersPlugin extends Plugin
 			reply(message, "Use !bones afk 1000 or !bones tick 1000");
 			return;
 		}
-		int rate;
+		RunType runType;
 		if (parts[0].equals("afk"))
 		{
-			rate = AFK_RATE;
+			runType = RunType.afk;
 		}
 		else if (parts[0].equals("tick"))
 		{
-			rate = TICK_RATE;
+			runType = RunType.tick;
 		}
 		else
 		{
 			reply(message, "Unknown run type. Use afk or tick.");
+			return;
+		}
+		int rate;
+		try
+		{
+			rate = pricePerInventory(runType);
+		}
+		catch (NumberFormatException ex)
+		{
+			reply(message, "Set a " + parts[0] + " price above the bone calculator.");
+			return;
+		}
+		if (rate <= 0)
+		{
+			reply(message, "Set a " + parts[0] + " price above the bone calculator.");
 			return;
 		}
 		int qty;
@@ -421,7 +472,8 @@ public class FindRunnersPlugin extends Plugin
 			reply(message, "Bone amount must be greater than 0.");
 			return;
 		}
-		long price = Math.round((qty / 26.0) * rate);
+		int runs = BoneCalcPanel.countInventoryRuns(qty);
+		long price = (long) runs * rate;
 		reply(message, parts[0] + " running " + new DecimalFormat("#,###").format(qty) + " bones would be " + formatGp(price) + " gp");
 	}
 

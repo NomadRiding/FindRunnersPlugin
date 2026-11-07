@@ -5,6 +5,8 @@ import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
 import java.util.List;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -24,15 +26,18 @@ import net.runelite.http.api.item.ItemPrice;
 public class BoneCalcPanel extends JPanel {
 	private static final int INVENTORY_SIZE = 26;
 
+	private final FindRunnersPlugin plugin;
 	private final ItemManager itemManager;
 	private final ClientThread clientThread;
+	private final JTextField afkPrice = new JTextField();
+	private final JTextField tickPrice = new JTextField();
 	private final JTextField insurance = new JTextField();
+	private final JComboBox<RunType> runType = new JComboBox<>(new RunType[] { RunType.afk, RunType.tick });
 	private final JComboBox<BoneChoice> boneChoice = new JComboBox<>(BoneChoice.values());
 	private final JLabel requestedLabel = new JLabel("Requested bone");
 	private final JTextField requestedBone = new JTextField();
 	private final JTextField pricePerBone = new JTextField("-");
 	private final JTextField boneQty = new JTextField("0");
-	private final JTextField pricePerInv = new JTextField("0");
 	private final JTextField pricePerRun = new JTextField("0");
 	private final JTextField inventoryRuns = new JTextField("0");
 	private final JTextField bonesValue = new JTextField("-");
@@ -40,25 +45,66 @@ public class BoneCalcPanel extends JPanel {
 	private long gePricePerBone;
 	private boolean hidden = true;
 
-	public BoneCalcPanel(ItemManager itemManager, ClientThread clientThread) {
-		this.itemManager = itemManager;
-		this.clientThread = clientThread;
+	public BoneCalcPanel(FindRunnersPlugin plugin) {
+		this.plugin = plugin;
+		this.itemManager = plugin.getItemManager();
+		this.clientThread = plugin.getClientThread();
 		pricePerBone.setEditable(false);
 		pricePerRun.setEditable(false);
 		inventoryRuns.setEditable(false);
 		bonesValue.setEditable(false);
 		bonesValue.setToolTipText("Price per bone: -");
 		requestedBone.setToolTipText("Type the full item name, such as Lava dragon bones");
-		insurance.setToolTipText("Example: 10m");
-		pricePerInv.setToolTipText("What you charge for one full inventory");
+		insurance.setToolTipText("Example: 20m");
+		afkPrice.setToolTipText("Price per inventory for an AFK run. Example: 25k");
+		tickPrice.setToolTipText("Price per inventory for a tick run. Example: 15k");
+		runType.setToolTipText("Uses the AFK or tick price set above");
+		insurance.setText(plugin.insuranceText());
+		afkPrice.setText(plugin.priceText(RunType.afk));
+		tickPrice.setText(plugin.priceText(RunType.tick));
+		insurance.addActionListener(e -> commitInsurance());
+		insurance.addFocusListener(new FocusAdapter() {
+			@Override
+			public void focusLost(FocusEvent e) {
+				commitInsurance();
+			}
+		});
+		afkPrice.addActionListener(e -> commitRate(afkPrice, RunType.afk, FindRunnersConfig.AFK_PRICE_KEY));
+		tickPrice.addActionListener(e -> commitRate(tickPrice, RunType.tick, FindRunnersConfig.TICK_PRICE_KEY));
+		afkPrice.addFocusListener(new FocusAdapter() {
+			@Override
+			public void focusLost(FocusEvent e) {
+				commitRate(afkPrice, RunType.afk, FindRunnersConfig.AFK_PRICE_KEY);
+			}
+		});
+		tickPrice.addFocusListener(new FocusAdapter() {
+			@Override
+			public void focusLost(FocusEvent e) {
+				commitRate(tickPrice, RunType.tick, FindRunnersConfig.TICK_PRICE_KEY);
+			}
+		});
 
 		JButton reset = new JButton("Reset");
 		reset.addActionListener(e -> reset());
 		JButton calc = new JButton("Calculate");
 		calc.addActionListener(e -> lookupGe());
-		insurance.addActionListener(e -> lookupGe());
 		boneQty.addActionListener(e -> lookupGe());
-		pricePerInv.addActionListener(e -> lookupGe());
+		boneQty.addFocusListener(new FocusAdapter() {
+			@Override
+			public void focusGained(FocusEvent e) {
+				if ("0".equals(boneQty.getText().trim())) {
+					boneQty.setText("");
+				}
+			}
+
+			@Override
+			public void focusLost(FocusEvent e) {
+				if (boneQty.getText().trim().isEmpty()) {
+					boneQty.setText("0");
+				}
+			}
+		});
+		runType.addActionListener(e -> refreshTotals());
 		requestedBone.addActionListener(e -> lookupGe());
 
 		boneChoice.addActionListener(e -> {
@@ -92,8 +138,7 @@ public class BoneCalcPanel extends JPanel {
 		header.setBorder(new EmptyBorder(10, 10, 10, 10));
 		calcPanel.add(header, c);
 
-		addRow(calcPanel, c, "Insurance", insurance);
-		addRow(calcPanel, c, "Price per inv", pricePerInv);
+		addRow(calcPanel, c, "Run type", runType);
 		addRow(calcPanel, c, "Bone", boneChoice);
 		addRow(calcPanel, c, requestedLabel, requestedBone);
 		requestedLabel.setVisible(false);
@@ -102,7 +147,7 @@ public class BoneCalcPanel extends JPanel {
 		// addRow(calcPanel, c, "Price per bone", pricePerBone);
 		addRow(calcPanel, c, "Total Run Cost", pricePerRun);
 		addRow(calcPanel, c, "Inventory runs", inventoryRuns);
-		addRow(calcPanel, c, "Bones val", bonesValue);
+		// addRow(calcPanel, c, "Bones val", bonesValue);
 
 		c.gridx = 0;
 		c.gridy++;
@@ -132,8 +177,26 @@ public class BoneCalcPanel extends JPanel {
 			spoiler.setText(hidden ? "Show bone calculator" : "Hide bone calculator");
 		});
 
+		JPanel rates = new JPanel(new GridBagLayout());
+		rates.setOpaque(false);
+		rates.setBorder(new EmptyBorder(0, 0, 12, 0));
+		GridBagConstraints ratesConstraints = new GridBagConstraints();
+		ratesConstraints.fill = GridBagConstraints.HORIZONTAL;
+		ratesConstraints.weightx = 1;
+		ratesConstraints.gridx = 0;
+		ratesConstraints.gridy = -1;
+		ratesConstraints.gridwidth = 2;
+		addRow(rates, ratesConstraints, "Insurance", insurance);
+		addRow(rates, ratesConstraints, "Tick price", tickPrice);
+		addRow(rates, ratesConstraints, "AFK price", afkPrice);
+
+		JPanel top = new JPanel(new BorderLayout());
+		top.setOpaque(false);
+		top.add(rates, BorderLayout.NORTH);
+		top.add(spoiler, BorderLayout.SOUTH);
+
 		setLayout(new BorderLayout());
-		add(spoiler, BorderLayout.PAGE_START);
+		add(top, BorderLayout.PAGE_START);
 		add(new JSeparator(), BorderLayout.CENTER);
 		add(calcPanel, BorderLayout.PAGE_END);
 		lookupGe();
@@ -147,9 +210,7 @@ public class BoneCalcPanel extends JPanel {
 	}
 
 	private void reset() {
-		insurance.setText("");
 		boneQty.setText("0");
-		pricePerInv.setText("0");
 		pricePerRun.setText("0");
 		inventoryRuns.setText("0");
 		bonesValue.setText("-");
@@ -193,7 +254,7 @@ public class BoneCalcPanel extends JPanel {
 		long cover;
 		try {
 			qty = FindRunnersPlugin.parseAmount(boneQty.getText());
-			perInv = FindRunnersPlugin.parseAmount(pricePerInv.getText());
+			perInv = plugin.pricePerInventory((RunType) runType.getSelectedItem());
 			cover = insurance.getText().trim().isEmpty() ? 0 : FindRunnersPlugin.parseAmount(insurance.getText());
 		} catch (NumberFormatException ex) {
 			pricePerRun.setText("Invalid");
@@ -286,7 +347,8 @@ public class BoneCalcPanel extends JPanel {
 		splitPanel.add(heading);
 		long boneValue = (long) take * gePrice;
 		JLabel qtyLabel = new JLabel("Bone qty: " + String.format("%,d", take));
-		qtyLabel.setToolTipText(String.format("Bone value: %,d + payment %,d = %,d", boneValue, payment, boneValue + payment));
+		qtyLabel.setToolTipText(
+				String.format("Bone value: %,d + payment %,d = %,d", boneValue, payment, boneValue + payment));
 		splitPanel.add(qtyLabel);
 		splitPanel.add(new JLabel("Payment: " + formatPayment(payment)));
 	}
@@ -327,6 +389,58 @@ public class BoneCalcPanel extends JPanel {
 			return itemManager.getItemPrice(results.get(0).getId());
 		}
 		return 0;
+	}
+
+	public void reloadRates() {
+		String cover = plugin.insuranceText();
+		String afk = plugin.priceText(RunType.afk);
+		String tick = plugin.priceText(RunType.tick);
+		if (!insurance.getText().trim().equals(cover)) {
+			insurance.setText(cover);
+		}
+		if (!afkPrice.getText().trim().equals(afk)) {
+			afkPrice.setText(afk);
+		}
+		if (!tickPrice.getText().trim().equals(tick)) {
+			tickPrice.setText(tick);
+		}
+		refreshTotals();
+	}
+
+	private void commitInsurance() {
+		String text = insurance.getText().trim();
+		if (!text.isEmpty()) {
+			try {
+				if (FindRunnersPlugin.parseAmount(text) < 0) {
+					insurance.setText(plugin.insuranceText());
+					return;
+				}
+			} catch (NumberFormatException ex) {
+				insurance.setText(plugin.insuranceText());
+				return;
+			}
+		}
+		if (!text.equals(plugin.insuranceText())) {
+			plugin.saveRunPrice(FindRunnersConfig.INSURANCE_KEY, text);
+		}
+		refreshTotals();
+	}
+
+	private void commitRate(JTextField field, RunType type, String key) {
+		String text = field.getText().trim();
+		try {
+			int amount = text.isEmpty() ? -1 : FindRunnersPlugin.parseAmount(text);
+			if (amount < 0) {
+				field.setText(plugin.priceText(type));
+				return;
+			}
+			if (!text.equals(plugin.priceText(type))) {
+				plugin.saveRunPrice(key, text);
+			}
+			refreshTotals();
+		} catch (NumberFormatException ex) {
+			field.setText(plugin.priceText(type));
+		}
 	}
 
 	private void setPricePerBoneText(String text) {

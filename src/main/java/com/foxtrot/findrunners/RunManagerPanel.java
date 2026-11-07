@@ -153,14 +153,9 @@ public class RunManagerPanel extends JPanel
 	private void applySuggestedPrice()
 	{
 		RunType type = Objects.requireNonNull((RunType) runType.getSelectedItem());
-		if (type == RunType.afk)
+		if (type == RunType.afk || type == RunType.tick)
 		{
-			pricePerInv.setText("25k");
-			pricePerInv.setForeground(Color.GREEN);
-		}
-		else if (type == RunType.tick)
-		{
-			pricePerInv.setText("15k");
+			pricePerInv.setText(plugin.priceText(type));
 			pricePerInv.setForeground(Color.GREEN);
 		}
 		else
