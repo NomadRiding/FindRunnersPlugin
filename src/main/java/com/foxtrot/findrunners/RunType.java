@@ -4,5 +4,19 @@ public enum RunType
 {
 	none,
 	afk,
-	tick
+	tick;
+
+	@Override
+	public String toString()
+	{
+		if (this == afk)
+		{
+			return "AFK";
+		}
+		if (this == tick)
+		{
+			return "Tick";
+		}
+		return "None";
+	}
 }

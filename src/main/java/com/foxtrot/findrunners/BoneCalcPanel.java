@@ -58,7 +58,7 @@ public class BoneCalcPanel extends JPanel {
 		insurance.setToolTipText("Example: 20m");
 		afkPrice.setToolTipText("Price per inventory for an AFK run. Example: 25k");
 		tickPrice.setToolTipText("Price per inventory for a tick run. Example: 15k");
-		runType.setToolTipText("Uses the AFK or tick price set above");
+		runType.setToolTipText("Uses the AFK or Tick price set above");
 		insurance.setText(plugin.insuranceText());
 		afkPrice.setText(plugin.priceText(RunType.afk));
 		tickPrice.setText(plugin.priceText(RunType.tick));
