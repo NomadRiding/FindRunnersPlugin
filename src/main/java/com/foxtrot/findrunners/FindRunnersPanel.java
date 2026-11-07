@@ -20,7 +20,7 @@ public class FindRunnersPanel extends PluginPanel
 		column.setLayout(new javax.swing.BoxLayout(column, javax.swing.BoxLayout.Y_AXIS));
 		column.setOpaque(false);
 
-		BoneCalcPanel calculator = new BoneCalcPanel();
+		BoneCalcPanel calculator = new BoneCalcPanel(plugin.getItemManager(), plugin.getClientThread());
 		runManager = new RunManagerPanel(plugin);
 		statPanel = new RunnerStatPanel(plugin);
 		calculator.setBorder(new EmptyBorder(8, 8, 8, 8));

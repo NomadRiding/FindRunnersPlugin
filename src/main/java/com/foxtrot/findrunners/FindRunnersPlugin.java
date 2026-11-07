@@ -196,13 +196,26 @@ public class FindRunnersPlugin extends Plugin
 		}
 		menuManager.get().removePlayerMenuItem(SET_CLIENT);
 		menuManager.get().removePlayerMenuItem(REMOVE_CLIENT);
-		clientToolbar.removeNavigation(navButton);
+		if (navButton != null)
+		{
+			clientToolbar.removeNavigation(navButton);
+		}
 		overlayManager.remove(chatOverlay);
 		overlayManager.remove(logoOverlay);
 		overlayManager.remove(notificationOverlay);
 		notificationOverlay.clear();
 		runner = false;
 		host = false;
+	}
+
+	ItemManager getItemManager()
+	{
+		return itemManager;
+	}
+
+	ClientThread getClientThread()
+	{
+		return clientThread;
 	}
 
 	public RunnerStats getStats()
