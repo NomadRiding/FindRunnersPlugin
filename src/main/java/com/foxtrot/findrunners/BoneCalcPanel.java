@@ -17,11 +17,13 @@ public class BoneCalcPanel extends JPanel
 	private final JTextField boneQty = new JTextField("0");
 	private final JTextField price = new JTextField("0");
 	private final JTextField totalCost = new JTextField("0");
+	private final JTextField inventoryRuns = new JTextField("0");
 	private boolean hidden = true;
 
 	public BoneCalcPanel()
 	{
 		totalCost.setEditable(false);
+		inventoryRuns.setEditable(false);
 
 		JButton reset = new JButton("Reset");
 		reset.addActionListener(e ->
@@ -29,6 +31,7 @@ public class BoneCalcPanel extends JPanel
 			boneQty.setText("0");
 			price.setText("0");
 			totalCost.setText("0");
+			inventoryRuns.setText("0");
 		});
 
 		JButton calc = new JButton("Calculate");
@@ -71,6 +74,10 @@ public class BoneCalcPanel extends JPanel
 		calcPanel.add(new JLabel("Price for run"), c);
 		c.gridy++;
 		calcPanel.add(totalCost, c);
+		c.gridy++;
+		calcPanel.add(new JLabel("Inventory runs"), c);
+		c.gridy++;
+		calcPanel.add(inventoryRuns, c);
 		calcPanel.setVisible(false);
 
 		JButton spoiler = new JButton("Show bone calculator");
@@ -87,6 +94,15 @@ public class BoneCalcPanel extends JPanel
 		add(calcPanel, BorderLayout.PAGE_END);
 	}
 
+	static int countInventoryRuns(int bones)
+	{
+		if (bones <= 0)
+		{
+			return 0;
+		}
+		return (bones + 25) / 26;
+	}
+
 	private void calculate()
 	{
 		try
@@ -95,12 +111,14 @@ public class BoneCalcPanel extends JPanel
 			int each = FindRunnersPlugin.parseAmount(price.getText());
 			boneQty.setText(Integer.toString(bones));
 			price.setText(Integer.toString(each));
-			long total = (long) Math.floor(bones / 26.0) * each;
-			totalCost.setText(FindRunnersPlugin.formatGp(total));
+			int runs = countInventoryRuns(bones);
+			totalCost.setText(FindRunnersPlugin.formatGp((long) runs * each));
+			inventoryRuns.setText(Integer.toString(runs));
 		}
 		catch (NumberFormatException ex)
 		{
 			totalCost.setText("Invalid");
+			inventoryRuns.setText("Invalid");
 		}
 	}
 }
