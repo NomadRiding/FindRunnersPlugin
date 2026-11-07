@@ -23,7 +23,7 @@ public class RunManagerPanel extends JPanel
 	public final JButton runButton = new JButton("Start run");
 
 	private final FindRunnersPlugin plugin;
-	private boolean hidden;
+	private boolean hidden = true;
 
 	public RunManagerPanel(FindRunnersPlugin plugin)
 	{
@@ -60,7 +60,9 @@ public class RunManagerPanel extends JPanel
 		c.insets = new Insets(12, 0, 0, 0);
 		form.add(runButton, c);
 
-		JButton spoiler = new JButton("Hide run manager");
+		form.setVisible(false);
+
+		JButton spoiler = new JButton("Show run manager");
 		spoiler.addActionListener(e ->
 		{
 			hidden = !hidden;

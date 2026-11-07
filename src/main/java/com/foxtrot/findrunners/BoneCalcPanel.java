@@ -43,7 +43,7 @@ public class BoneCalcPanel extends JPanel {
 	private final JTextField bonesValue = new JTextField("-");
 	private final JPanel splitPanel = new JPanel();
 	private long gePricePerBone;
-	private boolean hidden = true;
+	private boolean hidden;
 
 	public BoneCalcPanel(FindRunnersPlugin plugin) {
 		this.plugin = plugin;
@@ -168,9 +168,7 @@ public class BoneCalcPanel extends JPanel {
 		calcPanel.add(reset, c);
 		c.gridx = 1;
 		calcPanel.add(calc, c);
-		calcPanel.setVisible(false);
-
-		JButton spoiler = new JButton("Show bone calculator");
+		JButton spoiler = new JButton("Hide bone calculator");
 		spoiler.addActionListener(e -> {
 			hidden = !hidden;
 			calcPanel.setVisible(!hidden);
