@@ -69,6 +69,7 @@ public class FindRunnersPlugin extends Plugin
 	static final String SET_CLIENT = "Set as Client";
 	static final String REMOVE_CLIENT = "Remove as Client";
 	private static final String TRADING_WITH = "Trading with: ";
+	private static final String USER_AGENT = "Find Runners - https://github.com/NomadRiding/FindRunnersPlugin";
 
 	@Inject
 	private Client client;
@@ -99,6 +100,8 @@ public class FindRunnersPlugin extends Plugin
 
 	@Inject
 	private OkHttpClient httpClient;
+
+	private OkHttpClient logoClient;
 
 	@Inject
 	private FriendsChatOverlay chatOverlay;
@@ -174,6 +177,11 @@ public class FindRunnersPlugin extends Plugin
 			SwingUtilities.invokeLater(panel.statPanel::refresh);
 		}, 5, 5, TimeUnit.SECONDS);
 
+		logoClient = httpClient.newBuilder()
+			.addInterceptor(chain -> chain.proceed(chain.request().newBuilder()
+				.header("User-Agent", USER_AGENT)
+				.build()))
+			.build();
 		refreshRole();
 	}
 
@@ -558,13 +566,16 @@ public class FindRunnersPlugin extends Plugin
 	private void refreshLogo()
 	{
 		String url = config.logoUrl() == null ? "" : config.logoUrl().trim();
-		if (!url.startsWith("http://") && !url.startsWith("https://"))
+		if (logoClient == null || (!url.startsWith("http://") && !url.startsWith("https://")))
 		{
 			applyLogo(defaultLogo);
 			return;
 		}
-		Request request = new Request.Builder().url(url).build();
-		httpClient.newCall(request).enqueue(new Callback()
+		Request request = new Request.Builder()
+			.url(url)
+			.header("User-Agent", USER_AGENT)
+			.build();
+		logoClient.newCall(request).enqueue(new Callback()
 		{
 			@Override
 			public void onFailure(Call call, IOException e)
